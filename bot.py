@@ -1,5 +1,5 @@
-# Made by @levanci
-# v1.0
+# Made by LevHabarov
+# v1.1
 
 import os
 import re
@@ -12,6 +12,7 @@ import requests
 import eventlet
 from telebot import TeleBot, types, apihelper
 from logging.handlers import TimedRotatingFileHandler
+from time import sleep
 
 bot = TeleBot(config.tg_bot_token)
 
@@ -48,7 +49,8 @@ def get_data():
                 "v": config.req_version,
                 "domain": config.vk_domain,
                 "filter": config.req_filter,
-                "count": config.req_count,
+                "count": new_req_count,
+                "offset": req_offset,
             },
         )
         return data.json()["response"]["items"]
@@ -326,15 +328,19 @@ def send_posts(postid, text_of_post, photo_url_list, docs_list):
             if len(photo_url_list) == 0:
                 add_log("i", f"[id:{postid}] Bot is trying to send text post")
                 send_text_post()
+                sleep(10)
             elif len(photo_url_list) == 1:
                 add_log("i", f"[id:{postid}] Bot is trying to send post with photo")
                 send_photo_post()
+                sleep(10)
             elif len(photo_url_list) >= 2:
                 add_log("i", f"[id:{postid}] Bot is trying to send post with photos")
                 send_photos_post()
+                sleep(10)
 
             if docs_list:
                 send_docs()
+                sleep(10)
         except Exception as ex:
             add_log(
                 "e",
@@ -508,40 +514,82 @@ def compile_links_and_text(postid, text_of_post, links_list, videos_list, *repos
 
 
 def check_new_post():
+    global req_offset
+    global new_req_count
     """Gets list of posts from get_data(),
     compares post's id with id from the last_known_id.txt file.
     Sends list of posts to parse_posts(), writes new last id into file"""
-    if not check_admin_status(bot, config.tg_channel):
-        pass
-    add_log("i", "Scanning for new posts")
-    with open("last_known_id.txt", "r") as file:
-        last_id = int(file.read())
-        if last_id is None:
-            add_log("e", "Could not read from storage. Skipped iteration")
-            return
-        add_log("i", f"Last id of vk post is {last_id}")
     try:
-        feed = get_data()
-        if feed is not None:
-            if "is_pinned" in feed[0]:
-                add_log("i", f"Got some posts [id:{feed[-1]['id']}-{feed[1]['id']}]")
-                config._is_pinned_post = True
-                parse_posts(feed[1:], last_id)
-                new_last_id = feed[1]["id"]
-            else:
-                add_log("i", f"Got some posts [id:{feed[-1]['id']}-{feed[0]['id']}]")
-                config._is_pinned_post = False
-                parse_posts(feed, last_id)
-                new_last_id = feed[0]["id"]
-            if new_last_id > last_id:
-                with open("last_known_id.txt", "w") as file:
-                    file.write(str(new_last_id))
-                add_log("i", f"New last id of vk post is {new_last_id}")
-            else:
-                add_log("i", f"Last id remains {new_last_id}")
+        if config.req_count > 100:
+            new_req_count = 100
+            req_offset = config.req_count
+            for i in range(config.req_count//100+1):
+                if not check_admin_status(bot, config.tg_channel):
+                    pass
+                add_log("i", "Scanning for new posts")
+                with open("last_known_id.txt", "r") as file:
+                    last_id = int(file.read())
+                    if last_id is None:
+                        add_log("e", "Could not read from storage. Skipped iteration")
+                        return
+                    add_log("i", f"Last id of vk post is {last_id}")
+                req_offset -= 100
+                if req_offset < 0:
+                    req_offset = 0
+                feed = get_data()
+                if feed is not None:
+                    if "is_pinned" in feed[0]:
+                        add_log("i", f"Got some posts [id:{feed[-1]['id']}-{feed[1]['id']}]")
+                        config._is_pinned_post = True
+                        parse_posts(feed[1:], last_id)
+                        new_last_id = feed[1]["id"]
+                    else:
+                        add_log("i", f"Got some posts [id:{feed[-1]['id']}-{feed[0]['id']}]")
+                        config._is_pinned_post = False
+                        parse_posts(feed, last_id)
+                        new_last_id = feed[0]["id"]
+                    if new_last_id > last_id:
+                        with open("last_known_id.txt", "w") as file:
+                            file.write(str(new_last_id))
+                        add_log("i", f"New last id of vk post is {new_last_id}")
+                    else:
+                        add_log("i", f"Last id remains {new_last_id}")
+        else:
+            if not check_admin_status(bot, config.tg_channel):
+                pass
+            add_log("i", "Scanning for new posts")
+            with open("last_known_id.txt", "r") as file:
+                last_id = int(file.read())
+                if last_id is None:
+                    add_log("e", "Could not read from storage. Skipped iteration")
+                    return
+                add_log("i", f"Last id of vk post is {last_id}")
+            new_req_count = config.req_count
+            req_offset = 0
+            feed = get_data()
+            if feed is not None:
+                if "is_pinned" in feed[0]:
+                    add_log("i", f"Got some posts [id:{feed[-1]['id']}-{feed[1]['id']}]")
+                    config._is_pinned_post = True
+                    parse_posts(feed[1:], last_id)
+                    new_last_id = feed[1]["id"]
+                else:
+                    add_log("i", f"Got some posts [id:{feed[-1]['id']}-{feed[0]['id']}]")
+                    config._is_pinned_post = False
+                    parse_posts(feed, last_id)
+                    new_last_id = feed[0]["id"]
+                if new_last_id > last_id:
+                    with open("last_known_id.txt", "w") as file:
+                        file.write(str(new_last_id))
+                    add_log("i", f"New last id of vk post is {new_last_id}")
+                else:
+                    add_log("i", f"Last id remains {new_last_id}")
     except Exception as ex:
         add_log("e", f"[{type(ex).__name__}] in check_new_post(): {str(ex)}")
     add_log("i", "Scanning finished")
+
+
+
 
 
 def ready_for_html(text):
