@@ -36,7 +36,7 @@ req_version = 5.199
 
 # Number of posts to send to Telegram.
 # Min value = 2
-# Max value is unlimited
+# Max value = 100 (if single_start = True, max value is unlimited)
 req_count = 3
 
 # Filter to apply:
@@ -48,7 +48,7 @@ req_count = 3
 req_filter = "owner"
 
 # If True bot will stop after first pass through the loop.
-single_start = False
+single_start = True
 
 # Waiting time between cycle passes.
 # (in seconds)
