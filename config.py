@@ -34,7 +34,7 @@ req_version = 5.199
 
 # Number of posts to send to Telegram.
 # Min value = 2
-# Max value = 100
+# Max value is unlimited
 req_count = 3
 
 # Filter to apply:
