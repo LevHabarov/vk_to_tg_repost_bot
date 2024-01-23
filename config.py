@@ -10,6 +10,8 @@ tg_channel = "@aaaa"
 tg_bot_token = "1234567890:AAA-AaA1aaa1AAaaAa1a1AAAAA-a1aa1-Aa"
 
 # Personal token for your VK profile.
+# You can get it here:
+# https://github.com/LevHabarov/vk_to_tg_repost_bot/wiki/How-to-get-personal-access-token
 vk_token = "00a0a0ab00f0a0ab00f0a6ab0c00000b0f000f000f0a0ab0a00b000000dd00000000de0"
 
 # Part of the link (after vk.com/) to the VK channel
